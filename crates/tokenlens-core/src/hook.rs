@@ -17,11 +17,20 @@ pub fn recv() -> Result<()> {
         if line.trim().is_empty() { continue; }
         let resp = match serde_json::from_str::<HookRequest>(&line) {
             Ok(req) => handle(req),
-            Err(e) => HookResponse {
-                action: HookAction::Allow,
-                payload: None,
-                reason: Some(format!("parse error: {e}")),
-            },
+            Err(e) => {
+                // Surface the parse error so users can see why their input was
+                // rejected — the JSON-encoded `reason` field is easy to miss
+                // when piping the response to /dev/null or jq.
+                eprintln!("[tokenlens] hook recv: parse error: {e}");
+                if std::env::var("TOKENLENS_DEBUG").as_deref() == Ok("1") {
+                    eprintln!("[tokenlens] offending line: {}", line);
+                }
+                HookResponse {
+                    action: HookAction::Allow,
+                    payload: None,
+                    reason: Some(format!("parse error: {e}")),
+                }
+            }
         };
         writeln!(out, "{}", serde_json::to_string(&resp)?)?;
         out.flush()?;
@@ -40,7 +49,11 @@ fn handle(req: HookRequest) -> HookResponse {
                     // own saved-token tally when it later runs through
                     // `tokenlens run …`, so we deliberately log 0 here — this
                     // is a counter of agent-side rewrites, not a savings claim.
-                    let _ = tracking::record(format!("hook:{}", cmd), 0, 0, 0);
+                    if let Err(e) = tracking::record(format!("hook:{}", cmd), 0, 0, 0) {
+                        if std::env::var("TOKENLENS_DEBUG").as_deref() == Ok("1") {
+                            eprintln!("[tokenlens] tracker write failed: {e}");
+                        }
+                    }
                     let mut payload = req.payload.clone();
                     payload["command"] = serde_json::Value::String(r.command);
                     HookResponse {

@@ -6,6 +6,7 @@
 
 pub mod budget;
 pub mod cmds;
+pub mod doctor;
 pub mod filter;
 pub mod hook;
 pub mod recorder;

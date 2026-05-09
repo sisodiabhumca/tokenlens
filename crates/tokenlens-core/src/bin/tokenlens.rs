@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 use tokenlens_core::filter::CompressionLevel;
 use tokenlens_core::recorder::{Event, Recorder};
-use tokenlens_core::{budget, cmds, hook, recorder, rewrite, semantic, tracking};
+use tokenlens_core::{budget, cmds, doctor, hook, recorder, rewrite, semantic, tracking};
 
 #[derive(Parser)]
 #[command(name = "tokenlens", version, about = "Universal context-window optimizer for AI coding agents")]
@@ -93,6 +93,8 @@ enum Cmd {
         #[arg(long)]
         from: Option<String>,
     },
+    /// Self-diagnose tracker DB and report why `gain` may show zeros.
+    Doctor,
 }
 
 #[derive(Subcommand)]
@@ -166,6 +168,7 @@ fn main() -> Result<()> {
         }
         Cmd::Hook { sub: HookCmd::Recv } => hook::recv(),
         Cmd::ImportRtk { from } => tracking::import_rtk(from.as_deref()),
+        Cmd::Doctor => doctor::run(),
     }
 }
 
@@ -177,7 +180,11 @@ fn run_proxy(level: &str, cmd: &[String]) -> Result<()> {
     let result = cmds::run_proxied(program, &args, level)?;
     println!("{}", result.outcome.output);
     // Best-effort recorder write — never fail the caller.
-    let _ = record_outcome(&format!("{} {}", program, args.join(" ")), &result.outcome);
+    if let Err(e) = record_outcome(&format!("{} {}", program, args.join(" ")), &result.outcome) {
+        if std::env::var("TOKENLENS_DEBUG").as_deref() == Ok("1") {
+            eprintln!("[tokenlens] tracker write failed: {e}");
+        }
+    }
     std::process::exit(result.status);
 }
 

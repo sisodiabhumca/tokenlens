@@ -105,3 +105,20 @@ fi
 
 rm -f "$TMP_DB"
 unset TOKENLENS_DB TOKENLENS_AGENT
+
+# ---------- doctor check ----------
+echo
+echo "e2e: verifying doctor command"
+DOC_DB="$(mktemp -u)".db
+export TOKENLENS_DB="$DOC_DB"
+doctor_out="$("$BIN" doctor 2>&1 || true)"
+if echo "$doctor_out" | grep -q "round-trip\s*: OK"; then
+  echo "[pass] doctor: round-trip OK"
+else
+  echo "[FAIL] doctor: round-trip did not report OK"
+  echo "$doctor_out"
+  rm -f "$DOC_DB"
+  exit 1
+fi
+rm -f "$DOC_DB"
+unset TOKENLENS_DB

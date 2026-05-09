@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.2 — `doctor` + observable tracker
+
+- **New: `tokenlens doctor`.** One-shot self-diagnosis when `gain` shows
+  unexpected zeros. Prints the resolved DB path and source, parent-dir
+  writability, file size, current summary, and a write→read round-trip with
+  a sentinel event — plus all `TOKENLENS_*` env vars currently set.
+- **`TOKENLENS_DEBUG=1` stderr logging.** Every tracker-write site
+  (`hook recv`, `rewrite`, `run`, `fetch`, `read`, `compress`) now reports
+  failures to stderr when the env var is set, instead of silently swallowing
+  them. Default behavior unchanged.
+- **`hook recv` parse errors print to stderr.** Previously the JSON-encoded
+  `reason` field on stdout was the only signal an input line was rejected
+  — easy to miss when piping the response to `/dev/null` or `jq`. Errors now
+  also print `[tokenlens] hook recv: parse error: …` on stderr.
+
 ## 0.2.1 — `gain` tracker fix
 
 - **Fix: `tokenlens gain` no longer always reports zero.** Tracker writes were
