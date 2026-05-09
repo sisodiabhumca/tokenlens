@@ -88,7 +88,7 @@ export TOKENLENS_AGENT="e2e"
 gain_before_json="$("$BIN" gain --format json 2>/dev/null || echo '{}')"
 gain_before="$(echo "$gain_before_json" | jq -r '.commands // 0')"
 
-rewrite_in='{"tool":"bash","payload":{"command":"git log --oneline -5"}}'
+rewrite_in='{"v":1,"event":"tool.before","agent":"e2e","tool":"bash","payload":{"command":"git log --oneline -5"}}'
 echo "$rewrite_in" | "$BIN" hook recv >/dev/null 2>&1 || true
 
 gain_after_json="$("$BIN" gain --format json 2>/dev/null)"
