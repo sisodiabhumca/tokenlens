@@ -81,8 +81,7 @@ fi
 # DB has at least one row and `tokenlens gain --format json` reports it.
 echo
 echo "e2e: verifying gain pipeline"
-TMP_DB="$(mktemp -t tokenlens.gain.XXXXXX.db)"
-rm -f "$TMP_DB"
+TMP_DB="$(mktemp -u)".db
 export TOKENLENS_DB="$TMP_DB"
 export TOKENLENS_AGENT="e2e"
 
