@@ -1,0 +1,1 @@
+{"v":1,"event":"tool.before","agent":"claude-code","tool":"bash","payload":{"command":"pytest -q"},"meta":{"repo":"/repo","model":"claude-haiku-4"}}

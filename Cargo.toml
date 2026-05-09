@@ -8,7 +8,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 authors = ["TokenLens contributors"]
@@ -33,3 +33,22 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
+# cargo-dist — prebuilt binaries published on every tagged release.
+# Run `cargo dist init` locally to regenerate platform support tables.
+[workspace.metadata.dist]
+cargo-dist-version = "0.21.1"
+ci = ["github"]
+installers = ["shell", "powershell", "homebrew"]
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
+pr-run-mode = "plan"
+tap = "sisodiabhumca/homebrew-tokenlens"
+formula = "tokenlens"
+# Bundle the agent hook scripts and installer helpers in every archive.
+include = ["hooks/", "scripts/install.sh", "README.md", "LICENSE"]

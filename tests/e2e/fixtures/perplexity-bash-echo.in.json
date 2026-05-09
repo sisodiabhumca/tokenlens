@@ -1,0 +1,1 @@
+{"v":1,"event":"tool.before","agent":"perplexity-computer","tool":"bash","payload":{"command":"echo hello"},"meta":{"repo":"/repo","model":"claude-sonnet-4.5"}}

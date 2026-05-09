@@ -1,0 +1,46 @@
+name: Feature request
+description: Suggest a new capability for TokenLens.
+title: "[feature] "
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can't you do today? What's the workflow you're trying to support?
+      placeholder: When I run Cursor against a Bun monorepo, the …
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would the ideal API / flag / UI look like?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface should this land on?
+      options:
+        - CLI
+        - Agent hook
+        - Cloud dashboard
+        - MCP server
+        - Vercel middleware
+        - Filters
+        - Docs / marketing site
+        - Not sure
+    validations:
+      required: true
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct.
+          required: true

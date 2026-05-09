@@ -1,6 +1,6 @@
 {
   "name": "@tokenlens/vercel",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Vercel AI SDK middleware for TokenLens — compress tool results before they enter context",
   "license": "MIT",
   "type": "module",

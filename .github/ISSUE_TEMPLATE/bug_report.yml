@@ -1,0 +1,72 @@
+name: Bug report
+description: Something is broken in TokenLens.
+title: "[bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please fill out as much as you can — the
+        more detail, the faster we can fix it.
+
+        **Security issues:** do not file here. Use the channels listed in
+        [SECURITY.md](https://github.com/sisodiabhumca/tokenlens-scaffold/blob/main/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: TokenLens version
+      description: Output of `tokenlens --version`.
+      placeholder: tokenlens 0.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface is affected?
+      multiple: true
+      options:
+        - CLI (tokenlens)
+        - Agent hook (Claude Code / Codex / Cursor / Perplexity / Windsurf / Cline)
+        - Cloud dashboard (cloud/)
+        - MCP server (tokenlens-mcp)
+        - Vercel middleware (@tokenlens/vercel)
+        - Filters (TOML rules)
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Host OS + arch
+      placeholder: macOS 14.5 / arm64
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: A minimal sequence we can run.
+      placeholder: |
+        1. tokenlens init --agents claude
+        2. echo '{"v":1, ...}' | tokenlens hook recv
+        3. observed output: …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior (logs, stack traces)
+      render: shell
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct.
+          required: true

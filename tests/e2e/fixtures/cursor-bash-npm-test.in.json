@@ -1,0 +1,1 @@
+{"v":1,"event":"tool.before","agent":"cursor","tool":"bash","payload":{"command":"npm test"},"meta":{"repo":"/repo","model":"claude-opus-4"}}
