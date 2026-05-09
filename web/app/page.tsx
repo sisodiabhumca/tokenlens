@@ -7,7 +7,7 @@ export default function Home() {
           <nav>
             <a href="#features">Features</a>
             <a href="#install">Install</a>
-            <a href="https://github.com/sisodiabhumca/tokenlens-scaffold">GitHub</a>
+            <a href="https://github.com/sisodiabhumca/tokenlens">GitHub</a>
           </nav>
         </header>
 
@@ -22,11 +22,11 @@ export default function Home() {
           </p>
           <div className="cta">
             <a className="btn primary" href="#install">Install</a>
-            <a className="btn" href="https://github.com/sisodiabhumca/tokenlens-scaffold">View source</a>
+            <a className="btn" href="https://github.com/sisodiabhumca/tokenlens">View source</a>
           </div>
           <pre className="install" id="install">
 {`# one-liner installer (Linux + macOS)
-curl -fsSL https://raw.githubusercontent.com/sisodiabhumca/tokenlens-scaffold/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sisodiabhumca/tokenlens/main/scripts/install.sh | bash
 
 # Homebrew (after the tap is published)
 brew install sisodiabhumca/tokenlens/tokenlens
@@ -98,9 +98,9 @@ tokenlens init --agents claude,codex,cursor,perplexity`}
         <footer className="foot">
           <div>© {new Date().getFullYear()} TokenLens. MIT licensed.</div>
           <div>
-            <a href="https://github.com/sisodiabhumca/tokenlens-scaffold">GitHub</a>{" · "}
-            <a href="https://github.com/sisodiabhumca/tokenlens-scaffold/blob/main/SECURITY.md">Security</a>{" · "}
-            <a href="https://github.com/sisodiabhumca/tokenlens-scaffold/blob/main/CHANGELOG.md">Changelog</a>
+            <a href="https://github.com/sisodiabhumca/tokenlens">GitHub</a>{" · "}
+            <a href="https://github.com/sisodiabhumca/tokenlens/blob/main/SECURITY.md">Security</a>{" · "}
+            <a href="https://github.com/sisodiabhumca/tokenlens/blob/main/CHANGELOG.md">Changelog</a>
           </div>
         </footer>
       </div>

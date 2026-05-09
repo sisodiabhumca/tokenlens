@@ -8,7 +8,7 @@ reports, filter rules, agent adapters, and docs are all welcome.
 - By participating, you agree to follow our [Code of Conduct](./CODE_OF_CONDUCT.md).
 - Security issues: see [SECURITY.md](./SECURITY.md). Please do **not** open
   public issues for security reports.
-- File [issues](https://github.com/sisodiabhumca/tokenlens-scaffold/issues)
+- File [issues](https://github.com/sisodiabhumca/tokenlens/issues)
   using the templates in `.github/ISSUE_TEMPLATE/`.
 
 ## Repo layout

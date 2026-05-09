@@ -10,7 +10,7 @@ body:
         more detail, the faster we can fix it.
 
         **Security issues:** do not file here. Use the channels listed in
-        [SECURITY.md](https://github.com/sisodiabhumca/tokenlens-scaffold/blob/main/SECURITY.md).
+        [SECURITY.md](https://github.com/sisodiabhumca/tokenlens/blob/main/SECURITY.md).
   - type: input
     id: version
     attributes:

@@ -6,11 +6,11 @@
 # (default: ~/.tokenlens/hooks).
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/sisodiabhumca/tokenlens-scaffold/main/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/sisodiabhumca/tokenlens/main/scripts/install.sh | bash
 #   TOKENLENS_VERSION=v0.2.0 bash scripts/install.sh
 set -euo pipefail
 
-REPO="${TOKENLENS_REPO:-sisodiabhumca/tokenlens-scaffold}"
+REPO="${TOKENLENS_REPO:-sisodiabhumca/tokenlens}"
 VERSION="${TOKENLENS_VERSION:-latest}"
 BIN_DIR="${TOKENLENS_BIN:-$HOME/.local/bin}"
 HOOK_DIR="${TOKENLENS_HOOKS:-$HOME/.tokenlens/hooks}"

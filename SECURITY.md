@@ -16,7 +16,7 @@ Please **do not** open public GitHub issues for security reports.
 Use one of the following private channels:
 
 1. **GitHub Security Advisory** — preferred. Open a draft advisory at
-   <https://github.com/sisodiabhumca/tokenlens-scaffold/security/advisories/new>.
+   <https://github.com/sisodiabhumca/tokenlens/security/advisories/new>.
 2. **Email** — `security@tokenlens.dev`. PGP key on request.
 
 Please include:

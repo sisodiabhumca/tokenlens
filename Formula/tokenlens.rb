@@ -8,28 +8,28 @@
 
 class Tokenlens < Formula
   desc "Token-aware observability + filtering layer for AI coding agents"
-  homepage "https://github.com/sisodiabhumca/tokenlens-scaffold"
+  homepage "https://github.com/sisodiabhumca/tokenlens"
   version "0.2.0"
   license "MIT"
 
   on_macos do
     on_arm do
-      url "https://github.com/sisodiabhumca/tokenlens-scaffold/releases/download/v#{version}/tokenlens-aarch64-apple-darwin.tar.gz"
+      url "https://github.com/sisodiabhumca/tokenlens/releases/download/v#{version}/tokenlens-aarch64-apple-darwin.tar.gz"
       sha256 "REPLACE_WITH_SHA256_FROM_RELEASE"
     end
     on_intel do
-      url "https://github.com/sisodiabhumca/tokenlens-scaffold/releases/download/v#{version}/tokenlens-x86_64-apple-darwin.tar.gz"
+      url "https://github.com/sisodiabhumca/tokenlens/releases/download/v#{version}/tokenlens-x86_64-apple-darwin.tar.gz"
       sha256 "REPLACE_WITH_SHA256_FROM_RELEASE"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/sisodiabhumca/tokenlens-scaffold/releases/download/v#{version}/tokenlens-aarch64-unknown-linux-gnu.tar.gz"
+      url "https://github.com/sisodiabhumca/tokenlens/releases/download/v#{version}/tokenlens-aarch64-unknown-linux-gnu.tar.gz"
       sha256 "REPLACE_WITH_SHA256_FROM_RELEASE"
     end
     on_intel do
-      url "https://github.com/sisodiabhumca/tokenlens-scaffold/releases/download/v#{version}/tokenlens-x86_64-unknown-linux-gnu.tar.gz"
+      url "https://github.com/sisodiabhumca/tokenlens/releases/download/v#{version}/tokenlens-x86_64-unknown-linux-gnu.tar.gz"
       sha256 "REPLACE_WITH_SHA256_FROM_RELEASE"
     end
   end
