@@ -4,7 +4,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 use tokenlens_core::filter::CompressionLevel;
-use tokenlens_core::recorder::Event;
+use tokenlens_core::recorder::{Event, Recorder};
 use tokenlens_core::{budget, cmds, hook, recorder, rewrite, semantic, tracking};
 
 #[derive(Parser)]
@@ -115,7 +115,7 @@ fn main() -> Result<()> {
         Cmd::Read { path, level, max_lines } => {
             let level = level.parse::<CompressionLevel>().map_err(anyhow::Error::msg)?;
             let outcome = cmds::read::read_file(&path, level, max_lines)?;
-            let _ = record_outcome(&format!("read {}", path), &outcome);
+            let _ = record_outcome(&format!("read {}", path.display()), &outcome);
             print_outcome(&outcome);
             Ok(())
         }
@@ -177,12 +177,8 @@ fn run_proxy(level: &str, cmd: &[String]) -> Result<()> {
     let result = cmds::run_proxied(program, &args, level)?;
     println!("{}", result.outcome.output);
     // Best-effort recorder write — never fail the caller.
-    let _ = record_event(&format!("{} {}", program, args.join(" ")), &result.outcome);
+    let _ = record_outcome(&format!("{} {}", program, args.join(" ")), &result.outcome);
     std::process::exit(result.status);
-}
-
-fn record_event(cmd: &str, outcome: &tokenlens_core::filter::FilterOutcome) -> Result<()> {
-    record_outcome(cmd, outcome)
 }
 
 fn record_outcome(cmd: &str, outcome: &tokenlens_core::filter::FilterOutcome) -> Result<()> {
