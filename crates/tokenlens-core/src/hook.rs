@@ -2,6 +2,7 @@
 //! lines on stdout. Used by every TokenLens agent adapter.
 
 use crate::registry::{rewrite_command, RewriteAction};
+use crate::tracking;
 use anyhow::Result;
 use std::io::{BufRead, Write};
 use tokenlens_uhp::{HookAction, HookRequest, HookResponse};
@@ -34,6 +35,12 @@ fn handle(req: HookRequest) -> HookResponse {
             let r = rewrite_command(cmd);
             return match r.action {
                 RewriteAction::Rewrite | RewriteAction::Ask => {
+                    // Record one tracker event per rewrite so `tokenlens gain`
+                    // reflects hook activity. The wrapped command records its
+                    // own saved-token tally when it later runs through
+                    // `tokenlens run …`, so we deliberately log 0 here — this
+                    // is a counter of agent-side rewrites, not a savings claim.
+                    let _ = tracking::record(format!("hook:{}", cmd), 0, 0, 0);
                     let mut payload = req.payload.clone();
                     payload["command"] = serde_json::Value::String(r.command);
                     HookResponse {

@@ -130,8 +130,59 @@ CREATE INDEX IF NOT EXISTS idx_events_repo ON events(repo);
 "#;
 
 fn default_db_path() -> Result<PathBuf> {
+    // Allow tests / power users to point the tracker at an alternate file.
+    if let Ok(p) = std::env::var("TOKENLENS_DB") {
+        if !p.is_empty() {
+            return Ok(PathBuf::from(p));
+        }
+    }
     let base = dirs::data_local_dir().context("no local data dir")?;
     Ok(base.join("tokenlens").join("tracking.db"))
+}
+
+/// Approximate per-1M-token input price by model; returns dollars *saved*.
+///
+/// Public so the hook handler, the run-proxy path, and any downstream
+/// recorder can all agree on the same pricing table.
+pub fn dollars_for(saved_tokens: u64, model: Option<&str>) -> f64 {
+    let per_million = match model.unwrap_or("") {
+        m if m.contains("opus") => 15.0,
+        m if m.contains("sonnet") => 3.0,
+        m if m.contains("haiku") => 0.80,
+        m if m.contains("gpt-4o-mini") => 0.15,
+        m if m.contains("gpt-4o") => 5.0,
+        m if m.contains("gpt-5") => 8.0,
+        m if m.contains("gemini-2.5-pro") => 3.5,
+        m if m.contains("gemini") => 1.25,
+        m if m.contains("llama") => 0.0,
+        _ => 2.0,
+    };
+    (saved_tokens as f64) * per_million / 1_000_000.0
+}
+
+/// Record a tracker event from any code path that has computed an
+/// (input, output, saved) token count. Best-effort — failures are returned
+/// so the caller can log without panicking. Pulls `agent`/`model` from env
+/// (`TOKENLENS_AGENT`, `TOKENLENS_MODEL`).
+pub fn record(
+    cmd: impl Into<String>,
+    input_tokens: u64,
+    output_tokens: u64,
+    saved_tokens: u64,
+) -> Result<()> {
+    let tracker = Tracker::open_default()?;
+    let model = std::env::var("TOKENLENS_MODEL").ok();
+    tracker.insert_event(&Event {
+        ts: chrono::Utc::now().timestamp(),
+        cmd: cmd.into(),
+        input_tokens,
+        output_tokens,
+        saved_tokens,
+        dollars_saved: dollars_for(saved_tokens, model.as_deref()),
+        agent: std::env::var("TOKENLENS_AGENT").ok(),
+        model,
+        repo: std::env::current_dir().ok().map(|p| p.display().to_string()),
+    })
 }
 
 pub fn import_rtk(from: Option<&str>) -> Result<()> {
@@ -169,5 +220,19 @@ mod tests {
         let s = t.summary().unwrap();
         assert_eq!(s.commands, 1);
         assert_eq!(s.saved_tokens, 90);
+    }
+
+    #[test]
+    fn dollars_for_pricing_table() {
+        // Sonnet ~$3/M input.
+        let d = dollars_for(1_000_000, Some("claude-sonnet-4.5"));
+        assert!((d - 3.0).abs() < 1e-6, "sonnet price = {d}");
+        // GPT-4o-mini cheaper than GPT-4o.
+        assert!(
+            dollars_for(1_000_000, Some("gpt-4o-mini"))
+                < dollars_for(1_000_000, Some("gpt-4o"))
+        );
+        // Unknown model falls back to default $2/M.
+        assert!((dollars_for(1_000_000, None) - 2.0).abs() < 1e-6);
     }
 }

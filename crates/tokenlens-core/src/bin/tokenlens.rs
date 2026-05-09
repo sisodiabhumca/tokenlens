@@ -4,7 +4,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 use tokenlens_core::filter::CompressionLevel;
-use tokenlens_core::recorder::{Event, Recorder, SqliteRecorder};
+use tokenlens_core::recorder::Event;
 use tokenlens_core::{budget, cmds, hook, recorder, rewrite, semantic, tracking};
 
 #[derive(Parser)]
@@ -115,12 +115,14 @@ fn main() -> Result<()> {
         Cmd::Read { path, level, max_lines } => {
             let level = level.parse::<CompressionLevel>().map_err(anyhow::Error::msg)?;
             let outcome = cmds::read::read_file(&path, level, max_lines)?;
+            let _ = record_outcome(&format!("read {}", path), &outcome);
             print_outcome(&outcome);
             Ok(())
         }
         Cmd::Fetch { url, level } => {
             let level = level.parse::<CompressionLevel>().map_err(anyhow::Error::msg)?;
             let outcome = cmds::fetch::fetch_url(&url, level)?;
+            let _ = record_outcome(&format!("fetch {}", url), &outcome);
             print_outcome(&outcome);
             Ok(())
         }
@@ -144,6 +146,8 @@ fn main() -> Result<()> {
                     }
                 }
             }
+            let label = cmd.clone().unwrap_or_else(|| "compress".to_string());
+            let _ = record_outcome(&label, &outcome);
             print_outcome(&outcome);
             Ok(())
         }
@@ -178,54 +182,35 @@ fn run_proxy(level: &str, cmd: &[String]) -> Result<()> {
 }
 
 fn record_event(cmd: &str, outcome: &tokenlens_core::filter::FilterOutcome) -> Result<()> {
-    let tracker = tracking::Tracker::open_default()?;
-    let rec = SqliteRecorder { tracker };
-    rec.record(&Event {
-        ts: chrono::Utc::now().timestamp(),
-        cmd: cmd.to_string(),
-        input_tokens: outcome.original_tokens,
-        output_tokens: outcome.compressed_tokens,
-        saved_tokens: outcome.saved_tokens,
-        dollars_saved: dollars_for(outcome.saved_tokens, std::env::var("TOKENLENS_MODEL").ok().as_deref()),
-        agent: std::env::var("TOKENLENS_AGENT").ok(),
-        model: std::env::var("TOKENLENS_MODEL").ok(),
-        repo: std::env::current_dir().ok().map(|p| p.display().to_string()),
-    })?;
-    if std::env::var("TOKENLENS_CLOUD_URL").is_ok() {
+    record_outcome(cmd, outcome)
+}
+
+fn record_outcome(cmd: &str, outcome: &tokenlens_core::filter::FilterOutcome) -> Result<()> {
+    tracking::record(
+        cmd,
+        outcome.original_tokens,
+        outcome.compressed_tokens,
+        outcome.saved_tokens,
+    )?;
+    if let Ok(url) = std::env::var("TOKENLENS_CLOUD_URL") {
         let cloud = recorder::CloudRecorder::new(
-            std::env::var("TOKENLENS_CLOUD_URL").unwrap(),
+            url,
             std::env::var("TOKENLENS_CLOUD_TOKEN").ok(),
         );
+        let model = std::env::var("TOKENLENS_MODEL").ok();
         let _ = cloud.record(&Event {
             ts: chrono::Utc::now().timestamp(),
             cmd: cmd.to_string(),
             input_tokens: outcome.original_tokens,
             output_tokens: outcome.compressed_tokens,
             saved_tokens: outcome.saved_tokens,
-            dollars_saved: dollars_for(outcome.saved_tokens, std::env::var("TOKENLENS_MODEL").ok().as_deref()),
+            dollars_saved: tracking::dollars_for(outcome.saved_tokens, model.as_deref()),
             agent: std::env::var("TOKENLENS_AGENT").ok(),
-            model: std::env::var("TOKENLENS_MODEL").ok(),
+            model,
             repo: std::env::current_dir().ok().map(|p| p.display().to_string()),
         });
     }
     Ok(())
-}
-
-/// Approximate per-1M-token input price by model; returns dollars *saved*.
-fn dollars_for(saved_tokens: u64, model: Option<&str>) -> f64 {
-    let per_million = match model.unwrap_or("") {
-        m if m.contains("opus") => 15.0,
-        m if m.contains("sonnet") => 3.0,
-        m if m.contains("haiku") => 0.80,
-        m if m.contains("gpt-4o-mini") => 0.15,
-        m if m.contains("gpt-4o") => 5.0,
-        m if m.contains("gpt-5") => 8.0,
-        m if m.contains("gemini-2.5-pro") => 3.5,
-        m if m.contains("gemini") => 1.25,
-        m if m.contains("llama") => 0.0,
-        _ => 2.0,
-    };
-    (saved_tokens as f64) * per_million / 1_000_000.0
 }
 
 fn print_outcome(o: &tokenlens_core::filter::FilterOutcome) {

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.1 — `gain` tracker fix
+
+- **Fix: `tokenlens gain` no longer always reports zero.** Tracker writes were
+  previously only triggered by `tokenlens run …`. The hook handler
+  (`tokenlens hook recv`), the exit-code rewriter (`tokenlens rewrite`), and
+  the per-tool commands (`tokenlens fetch`, `tokenlens read`,
+  `tokenlens compress`) now all record events to the local SQLite tracker.
+- Add `TOKENLENS_DB` env var to override the tracker file location (used by
+  the e2e harness; handy for power users who want a per-project tracker).
+- New e2e check pipes a rewrite through `hook recv` and asserts
+  `tokenlens gain --format json` increments.
+- Move `dollars_for(…)` into `tokenlens_core::tracking` so the hook handler,
+  the run-proxy path, and downstream recorders share the same pricing table.
+
 ## 0.2.0 — Public beta
 
 ### Releases & install
