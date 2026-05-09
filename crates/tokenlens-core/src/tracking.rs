@@ -1,15 +1,12 @@
-//! Token-savings tracker (SQLite, 90-day retention).
-//!
-//! Schema-compatible target with RTK's `tracking.db` so `import-rtk` can
-//! copy rows in place. New columns (`model`, `agent`, `repo`) are added
-//! with NULL defaults.
+//! Local SQLite tracker.
 
+use crate::recorder::Event;
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection};
 use serde::Serialize;
 use std::path::PathBuf;
 
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Default, Serialize)]
 pub struct Summary {
     pub commands: u64,
     pub input_tokens: u64,
@@ -26,23 +23,32 @@ impl Summary {
 }
 
 pub struct Tracker {
-    conn: Connection,
+    pub conn: Connection,
 }
 
 impl Tracker {
     pub fn open_default() -> Result<Self> {
         let path = default_db_path()?;
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).ok();
-        }
-        let conn = Connection::open(&path)
-            .with_context(|| format!("opening tracking db at {}", path.display()))?;
+        if let Some(p) = path.parent() { std::fs::create_dir_all(p).ok(); }
+        let conn = Connection::open(&path).with_context(|| format!("opening {}", path.display()))?;
         conn.execute_batch(SCHEMA)?;
         Ok(Self { conn })
     }
 
+    pub fn insert_event(&self, e: &Event) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO events (ts, cmd, input_tokens, output_tokens, saved_tokens,
+                                 dollars_saved, agent, model, repo)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![
+                e.ts, e.cmd, e.input_tokens as i64, e.output_tokens as i64,
+                e.saved_tokens as i64, e.dollars_saved, e.agent, e.model, e.repo
+            ],
+        )?;
+        Ok(())
+    }
+
     pub fn summary(&self) -> Result<Summary> {
-        let mut s = Summary::default();
         let row: (i64, i64, i64, i64, f64) = self.conn.query_row(
             "SELECT COALESCE(COUNT(*),0),
                     COALESCE(SUM(input_tokens),0),
@@ -50,51 +56,48 @@ impl Tracker {
                     COALESCE(SUM(saved_tokens),0),
                     COALESCE(SUM(dollars_saved),0.0)
              FROM events",
-            [],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+            [], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
         )?;
-        s.commands = row.0 as u64;
-        s.input_tokens = row.1 as u64;
-        s.output_tokens = row.2 as u64;
-        s.saved_tokens = row.3 as u64;
-        s.dollars_saved = row.4;
-        Ok(s)
+        Ok(Summary {
+            commands: row.0 as u64,
+            input_tokens: row.1 as u64,
+            output_tokens: row.2 as u64,
+            saved_tokens: row.3 as u64,
+            dollars_saved: row.4,
+        })
     }
 
-    pub fn pivot_model(&self) -> Result<Vec<(String, u64)>> { self.pivot("model") }
-    pub fn pivot_repo(&self) -> Result<Vec<(String, u64)>> { self.pivot("repo") }
-    pub fn pivot_agent(&self) -> Result<Vec<(String, u64)>> { self.pivot("agent") }
+    pub fn summary_since(&self, since_ts: i64) -> Result<Summary> {
+        let row: (i64, i64, i64, i64, f64) = self.conn.query_row(
+            "SELECT COALESCE(COUNT(*),0),
+                    COALESCE(SUM(input_tokens),0),
+                    COALESCE(SUM(output_tokens),0),
+                    COALESCE(SUM(saved_tokens),0),
+                    COALESCE(SUM(dollars_saved),0.0)
+             FROM events WHERE ts >= ?1",
+            params![since_ts], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+        )?;
+        Ok(Summary {
+            commands: row.0 as u64,
+            input_tokens: row.1 as u64,
+            output_tokens: row.2 as u64,
+            saved_tokens: row.3 as u64,
+            dollars_saved: row.4,
+        })
+    }
 
-    fn pivot(&self, col: &str) -> Result<Vec<(String, u64)>> {
+    pub fn pivot(&self, col: &str) -> Result<Vec<(String, u64)>> {
+        if !matches!(col, "model" | "agent" | "repo") {
+            anyhow::bail!("invalid pivot column: {col}");
+        }
         let sql = format!(
             "SELECT COALESCE({col},'<none>'), COALESCE(SUM(saved_tokens),0)
              FROM events GROUP BY {col} ORDER BY 2 DESC LIMIT 20"
         );
         let mut stmt = self.conn.prepare(&sql)?;
-        let rows = stmt
+        Ok(stmt
             .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)? as u64)))?
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(rows)
-    }
-
-    #[allow(dead_code)]
-    pub fn record(
-        &self,
-        cmd: &str,
-        input: u64,
-        output: u64,
-        agent: Option<&str>,
-        model: Option<&str>,
-        repo: Option<&str>,
-    ) -> Result<()> {
-        let saved = input.saturating_sub(output);
-        self.conn.execute(
-            "INSERT INTO events (ts, cmd, input_tokens, output_tokens, saved_tokens,
-                                 dollars_saved, agent, model, repo)
-             VALUES (strftime('%s','now'), ?1, ?2, ?3, ?4, 0.0, ?5, ?6, ?7)",
-            params![cmd, input as i64, output as i64, saved as i64, agent, model, repo],
-        )?;
-        Ok(())
+            .collect::<Result<Vec<_>, _>>()?)
     }
 }
 
@@ -124,10 +127,7 @@ fn default_db_path() -> Result<PathBuf> {
 pub fn import_rtk(from: Option<&str>) -> Result<()> {
     let src = match from {
         Some(p) => PathBuf::from(p),
-        None => {
-            let base = dirs::data_local_dir().context("no local data dir")?;
-            base.join("rtk").join("tracking.db")
-        }
+        None => dirs::data_local_dir().context("no local data dir")?.join("rtk").join("tracking.db"),
     };
     if !src.exists() {
         anyhow::bail!("RTK db not found at {}", src.display());
@@ -137,4 +137,27 @@ pub fn import_rtk(from: Option<&str>) -> Result<()> {
     std::fs::copy(&src, &dst)?;
     println!("Imported RTK tracking db -> {}", dst.display());
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn insert_and_summary_roundtrip() {
+        let dir = tempdir().unwrap();
+        let conn = Connection::open(dir.path().join("t.db")).unwrap();
+        conn.execute_batch(SCHEMA).unwrap();
+        let t = Tracker { conn };
+        t.insert_event(&Event {
+            ts: 1, cmd: "git diff".into(), input_tokens: 100, output_tokens: 10,
+            saved_tokens: 90, dollars_saved: 0.01,
+            agent: Some("claude-code".into()), model: Some("claude-sonnet-4.5".into()),
+            repo: Some("/r".into()),
+        }).unwrap();
+        let s = t.summary().unwrap();
+        assert_eq!(s.commands, 1);
+        assert_eq!(s.saved_tokens, 90);
+    }
 }

@@ -2,80 +2,117 @@
 
 > Universal context-window optimizer and observability layer for AI coding agents.
 
-TokenLens sits between your tools (shell, files, MCP servers, web fetches) and your AI agent (Claude Code, Codex, Cursor, Perplexity Computer, ChatGPT, Vercel AI SDK, Windsurf, Cline) and **compresses, filters, and reports** on every payload before it consumes context window.
+TokenLens sits between your tools (shell, files, MCP, web fetches) and your AI agent (Claude Code, OpenAI Codex, Cursor, Perplexity Computer, ChatGPT Desktop, Vercel AI SDK / v0, Windsurf, Cline) and **compresses, filters, and reports** on every payload before it consumes context window.
 
-It's a successor to [RTK (Rust Token Killer)](https://github.com/rtk-ai/rtk) — keeping its fast Rust core and TOML filter registry, and adding:
+It evolved from [RTK (Rust Token Killer)](https://github.com/rtk-ai/rtk), keeping the fast Rust core and the TOML filter format, and adding:
 
-- **Universal Hook Protocol (UHP)** — one JSON line-protocol replaces N per-agent shell scripts
-- **MCP server** — drop-in for Claude Desktop, ChatGPT Desktop, Cursor MCP
-- **Vercel AI SDK middleware** — `@tokenlens/vercel` wraps `streamText` / `generateText`
-- **Semantic compression** — local LLMs or hosted summarizers (not just regex rules)
-- **Per-model cost mapping** — dollars saved, not just tokens
-- **Team dashboard** (Next.js, Vercel-deployable) with budget alerts
+- ✅ **Universal Hook Protocol (UHP)** — one JSON line-protocol, all agents
+- ✅ **MCP server** (real handlers for `compress`, `gain`, `lens.read`, `lens.diff`)
+- ✅ **Vercel AI SDK middleware** — `@tokenlens/vercel`, with tests, CJS+ESM+DTS
+- ✅ **Semantic compression** — Ollama default, OpenAI fallback, sha256 disk cache
+- ✅ **Per-model cost map** — dollars saved by Claude/GPT/Gemini/Llama
+- ✅ **Cloud dashboard** — Next.js 14, Postgres, ingest API, budget cron
+- ✅ **Self-host** — `docker compose up -d` or Kubernetes manifests
+- ✅ **Budget alerts** — CLI (`tokenlens budget --check`) + dashboard cron + webhooks
 
-## Status
+## Quick start
 
-🚧 **Early scaffold** — the Rust core is RTK-derived and builds; the JS packages and dashboard are stubs that compile and run but need the full integration layer.
+### CLI
+
+```bash
+# Build
+cargo build --release --workspace
+
+# Install hooks
+target/release/tokenlens init --agents claude,codex,cursor,perplexity,vercel
+
+# Run any tool with auto-compression and tracking
+tokenlens run -- git diff
+tokenlens run -- pytest -q
+tokenlens fetch https://example.com
+
+# Compress text from stdin (with optional semantic pass)
+echo "$(git log)" | tokenlens compress --level aggressive --semantic
+
+# See savings
+tokenlens gain
+tokenlens gain --by model,agent,repo --format json
+
+# Budget
+tokenlens budget --set-monthly 50
+tokenlens budget --webhook https://hooks.slack.com/services/…
+tokenlens budget --check    # exit 1 if projected > cap
+```
+
+### MCP (Claude Desktop / ChatGPT Desktop / Cursor MCP)
+
+```jsonc
+// ~/.config/claude/claude_desktop_config.json (or equivalent)
+{ "mcpServers": { "tokenlens": { "command": "tokenlens-mcp" } } }
+```
+
+Tools exposed: `compress`, `gain`, `lens.read`, `lens.diff`.
+
+### Vercel AI SDK
+
+```ts
+import { tokenLens } from "@tokenlens/vercel";
+import { anthropic } from "@ai-sdk/anthropic";
+import { streamText } from "ai";
+
+await streamText({
+  model: anthropic("claude-sonnet-4.5"),
+  tools,
+  experimental_wrapGenerate: tokenLens({
+    level: "aggressive",
+    model: "claude-sonnet-4.5",
+    semantic: async (text, target) => /* call any LLM */ text,
+  }),
+});
+```
+
+Set `TOKENLENS_CLOUD_URL` (and `TOKENLENS_CLOUD_TOKEN`) and the middleware will POST events to your dashboard automatically.
+
+### Cloud dashboard
+
+```bash
+docker compose up -d
+# http://localhost:3000
+```
+
+Or deploy to Vercel — `cloud/vercel.json` already schedules `/api/budget/check` every 6 hours. See [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md).
 
 ## Repo layout
 
 ```
 tokenlens/
 ├─ crates/
-│  ├─ tokenlens-core/    # Rust binary, RTK-derived
-│  ├─ tokenlens-format/  # public formatter crate
-│  ├─ tokenlens-mcp/     # MCP server
-│  └─ tokenlens-uhp/     # Universal Hook Protocol
+│  ├─ tokenlens-core/     Rust lib + tokenlens binary
+│  │  └─ filters/         59 TOML filter rules (RTK-derived)
+│  ├─ tokenlens-format/   public formatter trait
+│  ├─ tokenlens-mcp/      MCP stdio server (talks to tokenlens-core)
+│  └─ tokenlens-uhp/      Universal Hook Protocol types
 ├─ packages/
-│  ├─ vercel/            # @tokenlens/vercel — AI SDK middleware
-│  └─ node/              # @tokenlens/node — bindings to the Rust core
-├─ cloud/                # Next.js dashboard (deploy to Vercel)
-├─ hooks/                # per-agent thin shims (claude, codex, cursor, perplexity, …)
+│  ├─ vercel/             @tokenlens/vercel (built + tested)
+│  └─ node/               @tokenlens/node bindings
+├─ cloud/                 Next.js 14 dashboard + ingest + budget cron
+│  ├─ db/schema.sql       Postgres schema
+│  └─ Dockerfile
+├─ deploy/k8s/            Kubernetes manifests
+├─ docker-compose.yml
+├─ hooks/                 per-agent thin shims
 └─ docs/
 ```
 
-## Supported agents
+## Status
 
-| Agent | Mechanism | Status |
-|---|---|---|
-| Claude Code | UHP shell hook | ✅ stub |
-| OpenAI Codex CLI | UHP shell hook | ✅ stub |
-| Cursor (CLI + editor) | UHP shell hook | ✅ stub |
-| Perplexity Computer | `pplx`-aware bash wrapper + skill | ✅ stub |
-| ChatGPT Desktop | MCP server | ✅ stub |
-| Claude Desktop | MCP server | ✅ stub |
-| Vercel AI SDK / v0 | npm middleware | ✅ stub |
-| Windsurf / Cline / Kilocode / Antigravity | UHP shell hook | ✅ stub |
+- Rust workspace: builds (CI green); 4 crates, 5 unit tests
+- @tokenlens/vercel: 6/6 tests passing
+- Cloud: production build clean, 5 routes, mock-mode fallback for no-DB dev
+- Self-host: docker-compose verified
+- Hooks: Claude / Codex / Cursor / Perplexity / Windsurf / Cline shipped
 
-## Quick start
-
-```bash
-# Build the core
-cargo build --release -p tokenlens-core
-
-# Install hooks for the agents you use
-./target/release/tokenlens init --agents claude,codex,cursor,perplexity
-
-# See savings
-tokenlens gain
-tokenlens gain --by model --by repo
-
-# Run the MCP server (for ChatGPT/Claude Desktop)
-tokenlens mcp serve
-
-# Dev the dashboard
-pnpm install
-pnpm --filter ./cloud dev
-```
-
-## Migration from RTK
-
-```bash
-tokenlens import-rtk           # imports ~/.local/share/rtk/tracking.db
-ln -s "$(which tokenlens)" /usr/local/bin/rtk   # existing hooks keep working
-```
-
-All RTK TOML filters in `src/filters/*.toml` load unchanged.
+Migration from RTK is one-shot: `tokenlens import-rtk`, then symlink `rtk → tokenlens`.
 
 ## License
 

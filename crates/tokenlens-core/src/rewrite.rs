@@ -1,54 +1,31 @@
-//! Command-rewrite engine.
-//!
-//! Mirrors RTK's exit-code protocol so existing hooks keep working:
-//!   exit 0 + stdout  -> rewrite found, auto-allow
-//!   exit 1           -> no equivalent, pass through
-//!   exit 2           -> deny rule matched
-//!   exit 3 + stdout  -> rewrite + ask
-//!
-//! This is a stub registry. The full RTK registry (~3,900 lines) is intended
-//! to be ported under `src/registry/` with attribution.
+//! Thin CLI front for the rewrite registry. Mirrors RTK's exit-code protocol
+//! so existing hooks keep working without changes.
 
+use crate::registry::{rewrite_command, RewriteAction};
 use anyhow::Result;
-use std::process::ExitCode;
 
 pub fn run(cmd: String) -> Result<()> {
-    let trimmed = cmd.trim();
-    if trimmed.is_empty() {
+    if cmd.trim().is_empty() {
         std::process::exit(1);
     }
-
-    // Already wrapped — emit as-is, exit 0.
-    if trimmed.starts_with("tokenlens ") || trimmed.starts_with("rtk ") {
-        println!("{}", trimmed);
-        std::process::exit(0);
-    }
-
-    if let Some(rewritten) = stub_registry(trimmed) {
-        println!("{}", rewritten);
-        std::process::exit(0);
-    }
-
-    // No equivalent.
-    std::process::exit(1);
-}
-
-/// Tiny placeholder registry — replace with the ported RTK registry.
-fn stub_registry(cmd: &str) -> Option<String> {
-    const PREFIXES: &[&str] = &[
-        "git ", "cargo ", "npm ", "pnpm ", "yarn ", "pytest", "ruff ",
-        "ls ", "tree ", "grep ", "find ", "cat ", "tsc", "next ",
-    ];
-    for p in PREFIXES {
-        if cmd.starts_with(p) {
-            return Some(format!("tokenlens {}", cmd));
+    let r = rewrite_command(&cmd);
+    match r.action {
+        RewriteAction::Allow => {
+            // already-wrapped is exit 0 with the same line; passthrough is exit 1.
+            if r.reason == "already-wrapped" {
+                println!("{}", r.command);
+                std::process::exit(0);
+            }
+            std::process::exit(1);
+        }
+        RewriteAction::Rewrite => {
+            println!("{}", r.command);
+            std::process::exit(0);
+        }
+        RewriteAction::Deny => std::process::exit(2),
+        RewriteAction::Ask => {
+            println!("{}", r.command);
+            std::process::exit(3);
         }
     }
-    None
 }
-
-// Compile-time assurance that ExitCode stays in scope for future use.
-#[allow(dead_code)]
-const _: fn() = || {
-    let _ = ExitCode::SUCCESS;
-};

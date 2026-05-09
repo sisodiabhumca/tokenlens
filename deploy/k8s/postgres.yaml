@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata: { name: tokenlens-pg }
+spec:
+  selector: { app: tokenlens-pg }
+  ports: [{ port: 5432, targetPort: 5432 }]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: tokenlens-pg }
+spec:
+  serviceName: tokenlens-pg
+  replicas: 1
+  selector: { matchLabels: { app: tokenlens-pg } }
+  template:
+    metadata: { labels: { app: tokenlens-pg } }
+    spec:
+      containers:
+        - name: pg
+          image: postgres:16-alpine
+          env:
+            - { name: POSTGRES_USER, value: tokenlens }
+            - { name: POSTGRES_DB, value: tokenlens }
+            - { name: POSTGRES_PASSWORD, valueFrom: { secretKeyRef: { name: tokenlens, key: PG_PASSWORD } } }
+          ports: [{ containerPort: 5432 }]
+          volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources: { requests: { storage: 10Gi } }

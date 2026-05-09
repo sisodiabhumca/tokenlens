@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: tokenlens
+      POSTGRES_DB: tokenlens
+      POSTGRES_USER: tokenlens
+    ports: ["5432:5432"]
+    volumes:
+      - tokenlens_pg:/var/lib/postgresql/data
+      - ./cloud/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tokenlens"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  cloud:
+    build: { context: ., dockerfile: cloud/Dockerfile }
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgres://tokenlens:tokenlens@postgres:5432/tokenlens
+      DATABASE_SSL: "false"
+      INGEST_TOKEN: ${INGEST_TOKEN:-}
+      CRON_SECRET: ${CRON_SECRET:-}
+    ports: ["3000:3000"]
+
+volumes:
+  tokenlens_pg:

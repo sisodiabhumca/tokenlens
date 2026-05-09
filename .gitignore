@@ -9,3 +9,5 @@ dist/
 .vercel
 .turbo
 .pnpm-store/
+.cache/
+*.log

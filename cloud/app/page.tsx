@@ -1,25 +1,4 @@
-async function getSummary() {
-  // In production this would query Postgres. Stub data for now.
-  return {
-    commands: 12480,
-    inputTokens: 48_200_000,
-    outputTokens: 5_900_000,
-    savedTokens: 42_300_000,
-    dollarsSaved: 184.32,
-    byModel: [
-      { name: "claude-sonnet-4.5", saved: 22_400_000 },
-      { name: "gpt-5", saved: 11_900_000 },
-      { name: "gemini-2.5-pro", saved: 5_300_000 },
-    ],
-    byAgent: [
-      { name: "claude-code", saved: 19_800_000 },
-      { name: "cursor", saved: 9_400_000 },
-      { name: "codex-cli", saved: 6_200_000 },
-      { name: "perplexity-computer", saved: 4_100_000 },
-      { name: "vercel-ai-sdk", saved: 2_800_000 },
-    ],
-  };
-}
+import { getSummary } from "../lib/db";
 
 function fmt(n: number) {
   if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
@@ -29,12 +8,15 @@ function fmt(n: number) {
 }
 
 export default async function Page() {
-  const s = await getSummary();
-  const pct = ((s.savedTokens / s.inputTokens) * 100).toFixed(1);
+  const s = await getSummary(30);
+  const pct = s.inputTokens ? ((s.savedTokens / s.inputTokens) * 100).toFixed(1) : "0";
+
   return (
     <div>
-      <h1 style={{ fontSize: 28, marginBottom: 8 }}>Savings overview</h1>
-      <p style={{ color: "#9aa0a6", marginTop: 0 }}>Across your team's AI agents in the last 30 days.</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <h1 style={{ fontSize: 28, marginBottom: 8 }}>Savings overview</h1>
+        <span style={{ color: "#9aa0a6" }}>last 30 days</span>
+      </div>
 
       <section style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, margin: "24px 0" }}>
         <Card label="Commands" value={fmt(s.commands)} />
@@ -43,10 +25,16 @@ export default async function Page() {
         <Card label="Estimated $ saved" value={`$${s.dollarsSaved.toFixed(2)}`} />
       </section>
 
-      <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
         <Pivot title="By model" rows={s.byModel} />
         <Pivot title="By agent" rows={s.byAgent} />
+        <Pivot title="By repo" rows={s.byRepo} />
       </section>
+
+      <p style={{ marginTop: 32, color: "#9aa0a6", fontSize: 13 }}>
+        Send events: <code>POST /api/ingest</code> with{" "}
+        <code>{`{ "events": [{ ts, cmd, input_tokens, output_tokens, saved_tokens, dollars_saved, agent, model, repo }] }`}</code>.
+      </p>
     </div>
   );
 }
@@ -61,14 +49,16 @@ function Card({ label, value }: { label: string; value: string }) {
 }
 
 function Pivot({ title, rows }: { title: string; rows: { name: string; saved: number }[] }) {
-  const max = Math.max(...rows.map((r) => r.saved));
+  const max = Math.max(1, ...rows.map((r) => r.saved));
   return (
     <div style={{ background: "#11151a", border: "1px solid #1f2328", borderRadius: 12, padding: 16 }}>
       <h3 style={{ marginTop: 0 }}>{title}</h3>
+      {rows.length === 0 && <div style={{ color: "#9aa0a6", fontSize: 13 }}>No data yet.</div>}
       {rows.map((r) => (
         <div key={r.name} style={{ margin: "8px 0" }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-            <span>{r.name}</span><span>{fmt(r.saved)}</span>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>{r.name}</span>
+            <span>{fmt(r.saved)}</span>
           </div>
           <div style={{ background: "#1f2328", height: 6, borderRadius: 4, marginTop: 4 }}>
             <div style={{ background: "#4f8cff", height: 6, width: `${(r.saved / max) * 100}%`, borderRadius: 4 }} />

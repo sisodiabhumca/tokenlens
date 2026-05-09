@@ -16,5 +16,31 @@ jobs:
         with: { version: 9 }
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: pnpm }
-      - run: pnpm install --frozen-lockfile=false
-      - run: pnpm -r build
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @tokenlens/vercel test
+      - run: pnpm --filter @tokenlens/vercel build
+      - run: pnpm --filter ./cloud build
+  filters:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Validate embedded TOML filters
+        run: |
+          cd crates/tokenlens-core/filters
+          python - <<'PY'
+          import tomllib, glob, re, sys
+          bad = 0
+          for f in glob.glob('*.toml'):
+              try:
+                  d = tomllib.loads(open(f,'rb').read().decode())
+                  for _, body in (d.get('filters') or {}).items():
+                      re.compile(body['match_command'])
+                      for p in body.get('strip_lines_matching', []):
+                          re.compile(p)
+              except Exception as e:
+                  bad += 1
+                  print(f"FAIL {f}: {e}")
+          sys.exit(1 if bad else 0)
+          PY

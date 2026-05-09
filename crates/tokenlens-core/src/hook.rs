@@ -1,5 +1,7 @@
-//! UHP server: reads JSON lines on stdin, writes JSON responses on stdout.
+//! Universal Hook Protocol server. Reads JSON lines on stdin, writes JSON
+//! lines on stdout. Used by every TokenLens agent adapter.
 
+use crate::registry::{rewrite_command, RewriteAction};
 use anyhow::Result;
 use std::io::{BufRead, Write};
 use tokenlens_uhp::{HookAction, HookRequest, HookResponse};
@@ -12,21 +14,14 @@ pub fn recv() -> Result<()> {
     for line in stdin.lock().lines() {
         let line = line?;
         if line.trim().is_empty() { continue; }
-
-        let req: HookRequest = match serde_json::from_str(&line) {
-            Ok(r) => r,
-            Err(e) => {
-                let resp = HookResponse {
-                    action: HookAction::Allow,
-                    payload: None,
-                    reason: Some(format!("parse error: {e}")),
-                };
-                writeln!(out, "{}", serde_json::to_string(&resp)?)?;
-                continue;
-            }
+        let resp = match serde_json::from_str::<HookRequest>(&line) {
+            Ok(req) => handle(req),
+            Err(e) => HookResponse {
+                action: HookAction::Allow,
+                payload: None,
+                reason: Some(format!("parse error: {e}")),
+            },
         };
-
-        let resp = handle(req);
         writeln!(out, "{}", serde_json::to_string(&resp)?)?;
         out.flush()?;
     }
@@ -34,28 +29,31 @@ pub fn recv() -> Result<()> {
 }
 
 fn handle(req: HookRequest) -> HookResponse {
-    if req.tool == "bash" || req.tool == "shell" {
+    if matches!(req.tool.as_str(), "bash" | "shell") {
         if let Some(cmd) = req.payload.get("command").and_then(|v| v.as_str()) {
-            if let Some(rewritten) = stub_rewrite(cmd) {
-                let mut payload = req.payload.clone();
-                payload["command"] = serde_json::Value::String(rewritten);
-                return HookResponse {
-                    action: HookAction::Rewrite,
-                    payload: Some(payload),
-                    reason: Some("structural-stub".into()),
-                };
-            }
+            let r = rewrite_command(cmd);
+            return match r.action {
+                RewriteAction::Rewrite | RewriteAction::Ask => {
+                    let mut payload = req.payload.clone();
+                    payload["command"] = serde_json::Value::String(r.command);
+                    HookResponse {
+                        action: if r.action == RewriteAction::Ask { HookAction::Ask } else { HookAction::Rewrite },
+                        payload: Some(payload),
+                        reason: Some(r.reason.into()),
+                    }
+                }
+                RewriteAction::Deny => HookResponse {
+                    action: HookAction::Deny,
+                    payload: None,
+                    reason: Some(r.reason.into()),
+                },
+                RewriteAction::Allow => HookResponse {
+                    action: HookAction::Allow,
+                    payload: None,
+                    reason: Some(r.reason.into()),
+                },
+            };
         }
     }
     HookResponse { action: HookAction::Allow, payload: None, reason: None }
-}
-
-fn stub_rewrite(cmd: &str) -> Option<String> {
-    const PREFIXES: &[&str] = &["git ", "cargo ", "npm ", "pnpm ", "pytest", "tsc"];
-    for p in PREFIXES {
-        if cmd.starts_with(p) && !cmd.starts_with("tokenlens ") {
-            return Some(format!("tokenlens {}", cmd));
-        }
-    }
-    None
 }
