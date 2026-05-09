@@ -5,6 +5,7 @@ use anyhow::{Context, Result};
 use rusqlite::{params, Connection};
 use serde::Serialize;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 #[derive(Debug, Default, Serialize)]
 pub struct Summary {
@@ -23,7 +24,7 @@ impl Summary {
 }
 
 pub struct Tracker {
-    pub conn: Connection,
+    pub conn: Mutex<Connection>,
 }
 
 impl Tracker {
@@ -32,11 +33,16 @@ impl Tracker {
         if let Some(p) = path.parent() { std::fs::create_dir_all(p).ok(); }
         let conn = Connection::open(&path).with_context(|| format!("opening {}", path.display()))?;
         conn.execute_batch(SCHEMA)?;
-        Ok(Self { conn })
+        Ok(Self { conn: Mutex::new(conn) })
+    }
+
+    pub fn from_connection(conn: Connection) -> Self {
+        Self { conn: Mutex::new(conn) }
     }
 
     pub fn insert_event(&self, e: &Event) -> Result<()> {
-        self.conn.execute(
+        let conn = self.conn.lock().expect("tracker mutex");
+        conn.execute(
             "INSERT INTO events (ts, cmd, input_tokens, output_tokens, saved_tokens,
                                  dollars_saved, agent, model, repo)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
@@ -49,7 +55,8 @@ impl Tracker {
     }
 
     pub fn summary(&self) -> Result<Summary> {
-        let row: (i64, i64, i64, i64, f64) = self.conn.query_row(
+        let conn = self.conn.lock().expect("tracker mutex");
+        let row: (i64, i64, i64, i64, f64) = conn.query_row(
             "SELECT COALESCE(COUNT(*),0),
                     COALESCE(SUM(input_tokens),0),
                     COALESCE(SUM(output_tokens),0),
@@ -68,7 +75,8 @@ impl Tracker {
     }
 
     pub fn summary_since(&self, since_ts: i64) -> Result<Summary> {
-        let row: (i64, i64, i64, i64, f64) = self.conn.query_row(
+        let conn = self.conn.lock().expect("tracker mutex");
+        let row: (i64, i64, i64, i64, f64) = conn.query_row(
             "SELECT COALESCE(COUNT(*),0),
                     COALESCE(SUM(input_tokens),0),
                     COALESCE(SUM(output_tokens),0),
@@ -94,10 +102,12 @@ impl Tracker {
             "SELECT COALESCE({col},'<none>'), COALESCE(SUM(saved_tokens),0)
              FROM events GROUP BY {col} ORDER BY 2 DESC LIMIT 20"
         );
-        let mut stmt = self.conn.prepare(&sql)?;
-        Ok(stmt
-            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)? as u64)))?
-            .collect::<Result<Vec<_>, _>>()?)
+        let conn = self.conn.lock().expect("tracker mutex");
+        let mut stmt = conn.prepare(&sql)?;
+        let rows = stmt
+            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))?
+            .collect::<Result<Vec<(String, i64)>, _>>()?;
+        Ok(rows.into_iter().map(|(k, v)| (k, v as u64)).collect())
     }
 }
 
@@ -149,7 +159,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let conn = Connection::open(dir.path().join("t.db")).unwrap();
         conn.execute_batch(SCHEMA).unwrap();
-        let t = Tracker { conn };
+        let t = Tracker::from_connection(conn);
         t.insert_event(&Event {
             ts: 1, cmd: "git diff".into(), input_tokens: 100, output_tokens: 10,
             saved_tokens: 90, dollars_saved: 0.01,

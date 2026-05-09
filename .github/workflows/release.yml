@@ -14,26 +14,7 @@ permissions:
   contents: write
 
 jobs:
-  plan:
-    runs-on: ubuntu-latest
-    outputs:
-      val: ${{ steps.plan.outputs.manifest }}
-      tag: ${{ steps.plan.outputs.tag }}
-    steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - name: Install cargo-dist
-        run: |
-          curl --proto '=https' --tlsv1.2 -LsSf \
-            https://github.com/axodotdev/cargo-dist/releases/download/v0.21.1/cargo-dist-installer.sh | sh
-      - id: plan
-        run: |
-          cargo dist plan --tag "${GITHUB_REF_NAME}" --output-format=json > plan.json
-          echo "manifest=$(cat plan.json)" >> $GITHUB_OUTPUT
-          echo "tag=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
-
   build-binaries:
-    needs: plan
     strategy:
       fail-fast: false
       matrix:
@@ -90,7 +71,7 @@ jobs:
             dist/*.zip
 
   release:
-    needs: [plan, build-binaries]
+    needs: build-binaries
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
