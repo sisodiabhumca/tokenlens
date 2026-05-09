@@ -5,7 +5,7 @@ Perplexity Computer runs bash in a sandbox. To use TokenLens:
 1. Install the binary inside the sandbox (or rely on a system-wide install):
 
    ```bash
-   curl -fsSL https://tokenlens.dev/install.sh | sh
+   curl -fsSL https://raw.githubusercontent.com/sisodiabhumca/tokenlens/main/scripts/install.sh | bash
    ```
 
 2. Wrap `pplx` calls so search/fetch/snippets results are compressed before

@@ -13,6 +13,6 @@ pnpm --filter @tokenlens/web start
 1. Import the repo into Vercel.
 2. Set the project root to `web/`.
 3. Build command: `pnpm --filter @tokenlens/web build`. Output: `.next`.
-4. Add the custom domain `tokenlens.dev`.
+4. Live at <https://tokenlens-seven.vercel.app>.
 
 No env vars required — the marketing site is fully static-friendly and links out to GitHub for the source.

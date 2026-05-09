@@ -45,9 +45,11 @@ when an individual is officially representing the community in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-`conduct@tokenlens.dev`. All complaints will be reviewed and investigated
-promptly and fairly.
+reported to the community leaders responsible for enforcement by opening a
+private GitHub Security Advisory at
+<https://github.com/sisodiabhumca/tokenlens/security/advisories/new> or by
+contacting [@sisodiabhumca](https://github.com/sisodiabhumca) directly.
+All complaints will be reviewed and investigated promptly and fairly.
 
 ## Attribution
 

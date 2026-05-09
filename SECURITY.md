@@ -17,7 +17,8 @@ Use one of the following private channels:
 
 1. **GitHub Security Advisory** — preferred. Open a draft advisory at
    <https://github.com/sisodiabhumca/tokenlens/security/advisories/new>.
-2. **Email** — `security@tokenlens.dev`. PGP key on request.
+2. **Direct contact** — message the maintainer privately via GitHub
+   ([@sisodiabhumca](https://github.com/sisodiabhumca)). PGP key on request.
 
 Please include:
 - A description of the issue and its impact.

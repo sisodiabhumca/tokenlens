@@ -13,8 +13,8 @@
   tap (SHA256s replaced once v0.2.0 ships).
 
 ### Marketing site
-- New `web/` workspace package: Next.js 14 App Router, deploys to Vercel,
-  custom domain target `tokenlens.dev`.
+- New `web/` workspace package: Next.js 14 App Router, deployed to Vercel
+  at https://tokenlens-seven.vercel.app.
 - Landing page with hero, six feature cards, supported-agent grid, and
   copy-pasteable install instructions.
 

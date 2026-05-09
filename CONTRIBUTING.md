@@ -18,7 +18,7 @@ crates/         # Rust workspace: tokenlens-core (CLI), tokenlens-format,
                 # tokenlens-mcp, tokenlens-uhp
 packages/       # JS workspace: @tokenlens/vercel, @tokenlens/node
 cloud/          # Next.js dashboard + ingest API
-web/            # marketing site (tokenlens.dev)
+web/            # marketing site (tokenlens-seven.vercel.app)
 hooks/          # per-agent shell hooks (claude, codex, cursor, perplexity, …)
 crates/tokenlens-core/filters/  # 59 RTK-derived TOML filter rules
 tests/e2e/      # UHP simulation harness

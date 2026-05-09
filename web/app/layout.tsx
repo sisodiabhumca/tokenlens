@@ -5,12 +5,12 @@ export const metadata: Metadata = {
   title: "TokenLens — observability + filtering for AI coding agents",
   description:
     "TokenLens watches every prompt your AI coding agents send, strips noise, tracks spend, and enforces budgets across Claude, Codex, Cursor, ChatGPT, Perplexity, and Vercel AI SDK.",
-  metadataBase: new URL("https://tokenlens.dev"),
+  metadataBase: new URL("https://tokenlens-seven.vercel.app"),
   openGraph: {
     title: "TokenLens",
     description:
       "Universal Hook Protocol + token analytics for Claude Code, Codex, Cursor, and the Vercel AI SDK.",
-    url: "https://tokenlens.dev",
+    url: "https://tokenlens-seven.vercel.app",
     siteName: "TokenLens",
     type: "website",
   },
