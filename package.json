@@ -1,0 +1,16 @@
+{
+  "name": "tokenlens-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "TokenLens — universal context-window optimizer and observability layer for AI coding agents",
+  "workspaces": [
+    "packages/*",
+    "cloud"
+  ],
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev:cloud": "pnpm --filter ./cloud dev",
+    "test": "pnpm -r test"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

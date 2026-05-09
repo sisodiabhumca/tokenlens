@@ -1,0 +1,12 @@
+[package]
+name = "tokenlens-uhp"
+description = "Universal Hook Protocol — JSON line-protocol shared by all TokenLens agent adapters"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true

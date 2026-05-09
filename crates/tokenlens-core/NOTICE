@@ -1,0 +1,10 @@
+tokenlens-core
+==============
+
+This crate is derived from the RTK (Rust Token Killer) project:
+  https://github.com/rtk-ai/rtk
+  Copyright (c) Patrick Szymkowiak
+  Licensed under the MIT License.
+
+The TOML filter registry (src/filters/*.toml) and per-tool command handlers
+under src/cmds/ are intended to be ported from RTK with attribution preserved.

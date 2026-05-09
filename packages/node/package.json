@@ -1,0 +1,19 @@
+{
+  "name": "@tokenlens/node",
+  "version": "0.1.0",
+  "description": "Node bindings to the TokenLens Rust core (spawns the `tokenlens` binary).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}
